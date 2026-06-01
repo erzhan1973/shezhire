@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Шежіре · Акимбековтар</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden}
+body{background:#1a1a1a;font-family:-apple-system,sans-serif;user-select:none;-webkit-user-select:none;touch-action:none}
+.top{position:fixed;top:0;left:0;right:0;z-index:10;background:rgba(26,26,26,0.95);padding:8px 12px;display:flex;align-items:center;gap:10px}
+.top .logo{color:#ccc;font-size:15px;font-weight:600;text-decoration:none}
+.top .spacer{flex:1}
+.top input{background:#2a2a2a;border:1px solid #444;border-radius:20px;padding:5px 14px;color:#ccc;font-size:13px;width:180px;outline:none}
+.top input:focus{border-color:#e0b040}
+.btn-me{width:30px;height:30px;border-radius:50%;background:#7ab88a;color:#fff;font-size:13px;font-weight:700;border:none;cursor:pointer}
+.btn-tags{height:30px;border-radius:16px;background:#2a2a2a;color:#ccc;border:1px solid #444;font-size:12px;padding:0 12px;cursor:pointer;white-space:nowrap}
+.btn-tags.on{background:#e0a020;color:#1a1a1a;border-color:#c49020;font-weight:700}
+#stage{position:absolute;top:44px;left:0;right:0;bottom:0;overflow:hidden}
+#map{position:absolute;top:0;left:0;transform-origin:0 0}
+.n{position:absolute;padding:8px 18px;border-radius:22px;font-size:13px;white-space:nowrap;cursor:pointer;border:2px solid transparent}
+.n.root{background:#e0b040;color:#1a1a1a;border-color:#c49020;font-weight:700;font-size:14px}
+.n.self{background:#e0b040;color:#1a1a1a;border-color:#c49020;font-weight:700;font-size:14px}
+.n.zhuz,.n.tribe,.n.clan,.n.ancestor,.n.child{background:#7ab88a;color:#fff}
+.n.with-spouse{background:linear-gradient(90deg,#7ab88a 0%,#7ab88a 42%,#9b7ec4 43%,#9b7ec4 100%);color:#fff}
+.n .badge{position:absolute;top:-7px;right:-7px;min-width:18px;height:18px;border-radius:9px;background:#e0a020;color:#1a1a1a;font-size:10px;font-weight:700;display:none;align-items:center;justify-content:center;padding:0 4px}
+.n .badge.show{display:flex}
+.n .date{font-size:10px;opacity:0.7;display:block;line-height:1.3}
+.n.ex-spouse{opacity:0.65}
+.counter{position:fixed;bottom:16px;left:16px;z-index:10;color:rgba(255,255,255,.5);font-size:12px}
+.btn-me-floating{position:fixed;bottom:16px;right:16px;z-index:10;width:36px;height:36px;border-radius:50%;background:#e0a020;color:#1a1a1a;font-size:13px;font-weight:700;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+</style>
+</head>
+<body>
+<div class="top"><a class="logo" href="#">tumalas.kz</a><div class="spacer"></div><button class="btn-tags on" id="btnParentTags" title="Показать/скрыть имя родителя в скобках">Скобки</button><input id="q" placeholder="Іздеу..."><button class="btn-me" id="btnMeTop">М</button></div>
+<div id="stage"><div id="map"></div></div>
+<div class="counter" id="counter"></div>
+<button class="btn-me-floating" id="btnMeFloat">М</button>
+<script>
+var D=[
+{i:"a",n:"Алаш",t:"root"},
+{i:"o",n:"Орта жүз",t:"zhuz",p:"a"},
+{i:"ar",n:"Арғын",t:"tribe",p:"o"},
+{i:"m",n:"Мейрамсопы",t:"clan",p:"ar"},
+{i:"ku",n:"Қуандық",t:"clan",p:"m"},
+{i:"ka",n:"Қарпық",t:"clan",p:"ku"},
+{i:"ko",n:"Көзей",t:"clan",p:"ka"},
+{i:"to",n:"Тоқа",t:"clan",p:"ko"},
+{i:"b",n:"Бесім",t:"clan",p:"to"},
+{i:"ai",n:"Айтқожа",t:"clan",p:"b"},
+{i:"j",n:"Жаулы",t:"clan",p:"ai"},
+{i:"ti",n:"Тілен",t:"clan",p:"j"},
+{i:"atb",n:"Атабай",t:"child",p:"ti"},
+{i:"ati",n:"Әтіби",t:"child",p:"ti"},
+{i:"ate",n:"Әтенбек",t:"child",p:"ti"},
+{i:"mam2",n:"Маман",t:"child",p:"ti"},
+{i:"bol",n:"Болтай",t:"child",p:"ti"},
+{i:"shym",n:"Шымыр",t:"child",p:"ti"},
+{i:"els",n:"Елшібай",t:"child",p:"ti"},
+{i:"jar",n:"Жарас",t:"child",p:"ti"},
+{i:"qar3",n:"Қараша",t:"child",p:"ti"},
+{i:"qan",n:"Қанай",t:"child",p:"ti"},
+{i:"qoi2",n:"Қойсоймас",t:"child",p:"ti"},
+{i:"jan",n:"Жанай",t:"child",p:"ti"},
+{i:"esn",n:"Есенаман",t:"child",p:"ti"},
+{i:"ozb",n:"Өзібек",t:"child",p:"ti"},
+{i:"nys",n:"Нысан",t:"child",p:"ti"},
+{i:"srb",n:"Сарыбай",t:"child",p:"ti"},
+{i:"ba",n:"Бәйті",t:"child",p:"ti"},
+{i:"talj",n:"Талжан",t:"child",p:"ba"},
+{i:"aiy",n:"Айып",t:"child",p:"talj"},
+{i:"qai",n:"Қайып",t:"child",p:"talj"},
+{i:"bai2",n:"Байшанбек",t:"child",p:"talj"},
+{i:"eg",n:"Егінбай",t:"child",p:"talj"},
+{i:"ni",n:"Ниязбек",t:"child",p:"talj"},
+{i:"mu",n:"Мүсілім",t:"child",p:"talj"},
+{i:"ja",n:"Жағыпар",t:"child",p:"talj"},
+{i:"au",n:"Әубәкір",t:"child",p:"talj"},
+{i:"os",n:"Оспан",t:"child",p:"talj"},
+{i:"om",n:"Омар",t:"child",p:"talj"},
+{i:"sh",n:"Шоқыбас",t:"child",p:"ba"},
+{i:"ke",n:"Кенжебек",t:"child",p:"sh"},
+{i:"sha",n:"Шаймен",t:"child",p:"sh"},
+{i:"shai",n:"Шаяхмет",t:"child",p:"sh"},
+{i:"am",n:"Әмірә",t:"child",p:"sh"},
+{i:"bu",n:"Бұйрабек",t:"clan",p:"ba"},
+{i:"ah",n:"Ахмет",t:"child",p:"bu"},
+{i:"ham",n:"Хамит",t:"child",p:"ah"},
+{i:"bolat",n:"Болат",t:"child",p:"ham"},
+{i:"kensh",n:"Кенші",t:"child",p:"ham"},
+{i:"nurb",n:"Нұрабай",t:"child",p:"ham"},
+{i:"sabi",n:"Сәбит",t:"child",p:"ham"},
+{i:"aman",n:"Амангелді",t:"child",p:"ham"},
+{i:"rahy",n:"Рахым",t:"child",p:"ah"},
+{i:"alh",n:"Әлхам",t:"child",p:"ah"},
+{i:"alih",n:"Әлихан",t:"child",p:"ah"},
+{i:"bag",n:"Бағжан",t:"child",p:"ah"},
+{i:"ual",n:"Уалихан",t:"child",p:"bag"},
+{i:"talg",n:"Талғат",t:"child",p:"bag"},
+{i:"erik",n:"Ерік",t:"child",p:"bag"},
+{i:"ker",n:"Кертай",t:"child",p:"bu"},
+{i:"muh",n:"Мұхамеджан",t:"child",p:"ker"},
+{i:"alim",n:"Әлімжан",t:"child",p:"muh"},
+{i:"erez",n:"Ережеп",t:"child",p:"ker"},
+{i:"abrk",n:"Абрек",t:"child",p:"erez"},
+{i:"ju",n:"Жүпен",t:"child",p:"bu"},
+{i:"qas",n:"Қасым",t:"child",p:"ju"},
+{i:"mart",n:"Марат",t:"child",p:"qas"},
+{i:"janb",n:"Жаңбырбай",t:"child",p:"qas"},
+{i:"tarb",n:"Тәрбие",t:"child",p:"qas"},
+{i:"raiy",n:"Райымқұл",t:"child",p:"qas"},
+{i:"ybra",n:"Ыбрахым",t:"child",p:"qas"},
+{i:"esim",n:"Есім",t:"child",p:"ju"},
+{i:"salim",n:"Сәлім",t:"child",p:"esim"},
+{i:"talim",n:"Тәлім",t:"child",p:"esim"},
+{i:"dau",n:"Дәулетжан",t:"child",p:"ju"},
+{i:"baur",n:"Бауыржан",t:"child",p:"dau"},
+{i:"azmt",n:"Азамат",t:"child",p:"dau"},
+{i:"erzn",n:"Ержан",t:"child",p:"dau"},
+{i:"nurz",n:"Нұржан",t:"child",p:"dau"},
+{i:"murt",n:"Мұрат",t:"child",p:"dau"},
+{i:"izat",n:"Изат",t:"child",p:"dau"},
+{i:"oljb",n:"Олжабай",t:"child",p:"ju"},
+{i:"tole",n:"Төлеген",t:"child",p:"oljb"},
+{i:"kaj",n:"Қажыбек",t:"child",p:"bu"},
+{i:"mazh",n:"Мәжит",t:"child",p:"kaj"},
+{i:"erm",n:"Ермек",t:"child",p:"mazh"},
+{i:"muk",n:"Мұқан",t:"child",p:"mazh"},
+{i:"slt",n:"Сұлтан",t:"child",p:"mazh"},
+{i:"ash",n:"Әшірбек",t:"child",p:"bu"},
+{i:"bais",n:"Байша",t:"child",p:"ash"},
+{i:"ramz",n:"Рамазан",t:"child",p:"bais"},
+{i:"ama",n:"Аманбай",t:"child",p:"ash"},
+{i:"elam",n:"Еламан",t:"child",p:"ama"},
+{i:"as",n:"Әсембек",t:"child",p:"bu"},
+{i:"ak",n:"Әкімбек",t:"ancestor",p:"bu"},
+{i:"za",n:"Зада",t:"ancestor",p:"ak"},
+{i:"gainel",n:"Ғайнель",t:"spouse",p:"za"},
+{i:"ek",n:"Еркін",t:"child",p:"za",m:"gainel"},
+{i:"raush_ek",n:"Раушан",t:"spouse",p:"ek"},
+{i:"asb",n:"Асқарбек",t:"child",p:"ek",m:"raush_ek"},
+{i:"kira",n:"Кира",t:"child",p:"asb",b:"16.05.2018"},
+{i:"raian",n:"Раян",t:"child",p:"asb",b:"01.02.2026"},
+{i:"aker",n:"Акерке",t:"child",p:"ek",m:"raush_ek"},
+{i:"edil",n:"Еділхан",t:"spouse",p:"aker",ex:true},
+{i:"daniel",n:"Даниел",t:"child",p:"aker",b:"05.02.2016",m:"edil"},
+{i:"ed",n:"Ерден",t:"child",p:"za",m:"gainel"},
+{i:"galia",n:"Галия",t:"spouse",p:"ed"},
+{i:"ain",n:"Айнель",t:"child",p:"ed"},
+{i:"mad",n:"Мадина",t:"child",p:"ed"},
+{i:"marek",n:"Марек",t:"spouse",p:"mad"},
+{i:"maira_mad",n:"Майра",t:"child",p:"mad"},
+{i:"er",n:"Ерлан",t:"child",p:"za",m:"gainel"},
+{i:"me",n:"Медет",t:"child",p:"er"},
+{i:"erkesh",n:"Еркеш",t:"child",p:"za",m:"gainel"},
+{i:"kair",n:"Кайролла",t:"spouse",p:"erkesh"},
+{i:"zhan",n:"Жанбота",t:"child",p:"erkesh"},
+{i:"aizh",n:"Айжан",t:"spouse",p:"zhan"},
+{i:"zht",n:"Жантемір",t:"child",p:"zhan"},
+{i:"sal",n:"Салима",t:"child",p:"zhan"},
+{i:"aigul_za",n:"Айгүл",t:"child",p:"za",m:"gainel"},
+{i:"kanat_aigul",n:"Канат",t:"spouse",p:"aigul_za"},
+{i:"ainur_aigul",n:"Айнур",t:"child",p:"aigul_za",m:"kanat_aigul"},
+{i:"rustam_ainur",n:"Рустам",t:"spouse",p:"ainur_aigul"},
+{i:"miras_ainur",n:"Мирас",t:"child",p:"ainur_aigul",m:"rustam_ainur"},
+{i:"maryam_ainur",n:"Марьям",t:"child",p:"ainur_aigul",m:"rustam_ainur"},
+{i:"s",n:"Серік",t:"ancestor",p:"ak"},
+{i:"rau",n:"Раушан",t:"child",p:"s"},
+{i:"serb",n:"Серікболат",t:"spouse",p:"rau"},
+{i:"erb",n:"Еркеболат",t:"child",p:"rau"},
+{i:"bakh",n:"Бахыт",t:"child",p:"rau",b:"29.12.1990"},
+{i:"daniar",n:"Данияр",t:"spouse",p:"bakh",b:"30.05.1983"},
+{i:"aidar",n:"Ай-Дария",t:"child",p:"bakh",b:"16.10.2013"},
+{i:"nurad",n:"Нур-Адиль",t:"child",p:"bakh",b:"04.09.2015"},
+{i:"aril",n:"Арилана",t:"child",p:"bakh",b:"20.06.2019"},
+{i:"mai",n:"Майра",t:"child",p:"s",b:"17.02.1962"},
+{i:"kai",n:"Қайрат",t:"spouse",p:"mai"},
+{i:"nag",n:"Нагима",t:"child",p:"mai"},
+{i:"sabit",n:"Сабит",t:"spouse",p:"nag"},
+{i:"daulet",n:"Даулет",t:"child",p:"nag",m:"sabit"},
+{i:"alen",n:"Ален",t:"child",p:"nag",m:"sabit"},
+{i:"dinm",n:"Динмухаммед",t:"child",p:"nag",m:"sabit"},
+{i:"rashid",n:"Рашид",t:"spouse",p:"nag"},
+{i:"aizek",n:"Айзек",t:"child",p:"nag",m:"rashid"},
+{i:"ali",n:"Алия",t:"child",p:"mai"},
+{i:"yerlan_a",n:"Ерлан",t:"spouse",p:"ali"},
+{i:"aruzh",n:"Аружан",t:"child",p:"ali",b:"30.03.2015"},
+{i:"tokm",n:"Тоқмеил",t:"child",p:"ali",b:"12.02.2018"},
+{i:"aigan",n:"Айғаным",t:"child",p:"ali",b:"21.04.2022"},
+{i:"ab",n:"Абай",t:"child",p:"mai"},
+{i:"diana",n:"Диана",t:"spouse",p:"ab"},
+{i:"umai",n:"Үмай",t:"child",p:"ab"},
+{i:"aya",n:"Аягүл",t:"child",p:"s",b:"21.01.1965"},
+{i:"yerl",n:"Ерлан",t:"spouse",p:"aya",b:"27.01.1965"},
+{i:"san",n:"Санжар",t:"child",p:"aya",b:"21.09.1990"},
+{i:"bai",n:"Байжан",t:"child",p:"aya",b:"18.08.1993"},
+{i:"ayan",n:"Аянұра",t:"child",p:"s",b:"26.04.1967"},
+{i:"aid",n:"Айдар",t:"spouse",p:"ayan"},
+{i:"azh",n:"Ажар",t:"child",p:"ayan",b:"09.06.1988"},
+{i:"sani",n:"Сәния",t:"child",p:"ayan",b:"05.04.1994"},
+{i:"din",n:"Динара",t:"child",p:"s"},
+{i:"azm",n:"Азамат",t:"spouse",p:"din"},
+{i:"abl",n:"Аблайхан",t:"child",p:"din"},
+{i:"ars",n:"Арстан",t:"child",p:"din"},
+{i:"y",n:"Ержан",t:"self",p:"s"},
+{i:"dan",n:"Дана",t:"spouse",p:"y"},
+{i:"az",n:"Азиза",t:"spouse",p:"y"},
+{i:"sb",n:"Сабина",t:"child",p:"y",m:"dan"},
+{i:"d",n:"Данияр",t:"child",p:"y",m:"az"},
+{i:"ol",n:"Олжас",t:"child",p:"y",m:"az"},
+{i:"qa",n:"Қалмағанбет",t:"child",p:"ba"},
+{i:"abb",n:"Аббас",t:"child",p:"qa"},
+{i:"abd",n:"Әбділда",t:"child",p:"qa"},
+{i:"no",n:"Ноғайбай",t:"child",p:"ti"}
+];
+
+var M={},K={},SP={},EX={};
+D.forEach(function(d){M[d.i]=d;if(d.ex)EX[d.i]=true});
+D.forEach(function(d){
+ if(d.p){
+  if(d.t!=="spouse"){if(!K[d.p])K[d.p]=[];K[d.p].push(d.i)}
+  else {if(!SP[d.p])SP[d.p]=[];SP[d.p].push(d.i)}
+ }
+});
+
+var map=document.getElementById("map"),stage=document.getElementById("stage");
+var expanded={};(function(){var c="y";while(c){if(K[c])expanded[c]=true;c=M[c].p}})();
+var tx=40,ty=40,scale=1,showParentTags=true;
+function tr(){map.style.transform="translate("+tx+"px,"+ty+"px) scale("+scale+")"}
+
+var drag=false,sx,sy,stx,sty;
+stage.onmousedown=function(e){if(e.target.closest(".n"))return;drag=true;sx=e.clientX;sy=e.clientY;stx=tx;sty=ty;e.preventDefault()};
+window.onmousemove=function(e){if(!drag)return;tx=stx+(e.clientX-sx)/scale;ty=sty+(e.clientY-sy)/scale;tr()};
+window.onmouseup=function(){drag=false};
+stage.onwheel=function(e){e.preventDefault();var r=map.getBoundingClientRect(),mx=(e.clientX-r.left)/scale,my=(e.clientY-r.top)/scale,ns=scale*(e.deltaY<0?1.08:0.92);ns=Math.max(0.2,Math.min(4,ns));tx-=mx*(ns-scale);ty-=my*(ns-scale);scale=ns;tr()};
+
+var ROW_H=42,GAP=36,COL_W=330,COL_GAP=70;
+
+function render(){
+ D.forEach(function(d){delete d._dp;delete d._w;delete d._h;delete d._x;delete d._y});
+ function setDepth(id,dp){M[id]._dp=dp;if(K[id]&&expanded[id])K[id].forEach(function(c){setDepth(c,dp+1)})}
+ setDepth("a",0);
+ var maxdp=0,vc=0;D.forEach(function(d){if(d._dp!==undefined){vc++;if(d._dp>maxdp)maxdp=d._dp}});
+
+ function elW(d){
+  var label=d.n;
+  if(SP[d.i]&&SP[d.i].length)label=d.n+" · "+SP[d.i].map(function(s){return M[s].n}).join(" · ");
+  if(showParentTags&&d.m){var par=M[d.p];var sp=SP[d.p];if(par&&sp&&sp.length>1){var par2=M[d.m];if(par2)label+=" ["+par2.n+"]"}}
+  if(d.b||d.d_date){
+   label+="__";
+   if(d.b)label+=d.b;
+   if(d.d_date)label+=" – "+d.d_date;
+  }
+  return Math.max(80,label.length*10+40);
+ }
+
+ function calcH(id){
+  var kids=K[id]?K[id].filter(function(c){return expanded[id]&&M[c]._dp!==undefined&&M[c].t!=="spouse"}):[];
+  if(!kids.length){M[id]._h=ROW_H;M[id]._w=elW(M[id]);return}
+  var h=0;
+  kids.forEach(function(c,k){calcH(c);h+=M[c]._h;if(k<kids.length-1)h+=GAP});
+  M[id]._h=h;M[id]._w=elW(M[id]);
+ }
+ calcH("a");
+
+ function place(id,top){
+  var kids=K[id]?K[id].filter(function(c){return expanded[id]&&M[c]._dp!==undefined&&M[c].t!=="spouse"}):[];
+  if(!kids.length){M[id]._y=top;return top+ROW_H}
+  M[id]._y=top+M[id]._h/2-ROW_H/2;
+  var y=top;
+  kids.forEach(function(c){var bot=place(c,y);y=bot+GAP});
+  return top+M[id]._h;
+ }
+ place("a",60);
+
+ var levelW=[];
+ D.forEach(function(d){if(d._dp!==undefined){levelW[d._dp]=Math.max(levelW[d._dp]||0,d._w||elW(d))}});
+ var levelX=[20];
+ for(var li=1;li<=maxdp;li++)levelX[li]=levelX[li-1]+(levelW[li-1]||120)+COL_GAP;
+ D.forEach(function(d){if(d._dp!==undefined)d._x=levelX[d._dp]});
+
+ var maxY=0,minY=1e9,maxX=0;
+ D.forEach(function(d){if(d._dp===undefined)return;if(d._y>maxY)maxY=d._y;if(d._y<minY)minY=d._y;if(d._x+(d._w||120)>maxX)maxX=d._x+(d._w||120)});
+ var mw=maxX+160,mh=maxY-minY+ROW_H+120;
+
+ map.innerHTML="";
+ map.style.width=mw+"px";map.style.height=mh+"px";
+
+ var NS="http://www.w3.org/2000/svg",svg=document.createElementNS(NS,"svg");
+ svg.setAttribute("width",mw);svg.setAttribute("height",mh);
+ svg.style.cssText="position:absolute;top:0;left:0;pointer-events:none;overflow:visible";
+ map.appendChild(svg);
+
+ D.forEach(function(d){
+  if(!d.p||d._dp===undefined||d.t==="spouse")return;
+  var p=M[d.p];if(!p||p._dp===undefined)return;
+  var x1=p._x+(p._w||120),y1=p._y+ROW_H/2,x2=d._x,y2=d._y+ROW_H/2,dx=x2-x1,dy=y2-y1;
+  var path=document.createElementNS(NS,"path");
+  path.setAttribute("d","M"+x1+","+y1+" C"+(x1+dx*0.4)+","+y1+" "+(x2-dx*0.4)+","+y2+" "+x2+","+y2);
+  path.setAttribute("fill","none");path.setAttribute("stroke","#555");path.setAttribute("stroke-width","1.5");
+  svg.appendChild(path);
+ });
+
+ D.forEach(function(d){
+  if(d._dp===undefined||d.t==="spouse")return;
+  var label=d.n,cls=d.t;
+  if(SP[d.i]&&SP[d.i].length){
+   label=d.n+" · "+SP[d.i].map(function(s){return M[s].n}).join(" · ");
+   cls+=" with-spouse";
+  }
+  if(showParentTags&&d.m){var par=M[d.p];var sp=SP[d.p];if(par&&sp&&sp.length>1){var par2=M[d.m];if(par2)label+=" ["+par2.n+"]"}}
+  if(d.b||d.d_date){
+   label+="<br><small>";
+   if(d.b)label+=d.b;
+   if(d.b&&d.d_date)label+=" – ";
+   if(d.d_date)label+=d.d_date;
+   label+="</small>";
+  }
+  var el=document.createElement("div");el.className="n "+cls;el.innerHTML=label;
+  el.style.left=d._x+"px";el.style.top=d._y+"px";el.setAttribute("data-i",d.i);
+  var cc=(K[d.i]||[]).length;
+  if(cc){var b=document.createElement("span");b.className="badge show";b.textContent=cc;el.appendChild(b)}
+  el.onclick=function(e){e.stopPropagation();
+   var id=this.getAttribute("data-i");if(!id||!K[id])return;
+   if(expanded[id]){(function col(c){delete expanded[c];if(K[c])K[c].forEach(col)})(id)}
+   else{var cur=M[id].p;while(cur){expanded[cur]=true;cur=M[cur].p}expanded[id]=true}
+   render();tr();
+  };
+  map.appendChild(el);
+ });
+ document.getElementById("counter").textContent="Показано "+vc+" из "+D.length;
+}
+
+function goMe(){
+ render();tr();var me=M["y"];if(!me||me._x===undefined)return;
+ tx=(stage.clientWidth/2)-me._x*scale-(M["y"]._w||140)*scale/2;ty=(stage.clientHeight/2)-(me._y+ROW_H/2)*scale;tr();
+}
+function goRoot(){
+ render();tr();var root=M["a"];if(!root||root._x===undefined)return;
+ tx=(stage.clientWidth/2)-root._x*scale-(M["a"]._w||140)*scale/2;ty=(stage.clientHeight/2)-(root._y+ROW_H/2)*scale;tr();
+}
+document.getElementById("btnMeTop").onclick=goMe;document.getElementById("btnMeFloat").onclick=goMe;
+document.getElementById("btnParentTags").onclick=function(){showParentTags=!showParentTags;this.classList.toggle("on",showParentTags);this.textContent=showParentTags?"Скобки":"Без скобок";render();tr()};
+goRoot();
+document.getElementById("q").oninput=function(){
+ var q=this.value.trim().toLowerCase();
+ if(!q){expanded={};var c="y";while(c){if(K[c])expanded[c]=true;c=M[c].p}render();tr();return}
+ var f=D.find(function(d){return d.n.toLowerCase().indexOf(q)>=0});if(!f)return;
+ expanded={};var c=f.i;while(c){if(K[c]||c===f.i)expanded[c]=true;c=M[c].p}render();tr();
+};
+</script>
+</body>
+</html>
